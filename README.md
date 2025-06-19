@@ -24,20 +24,20 @@ Continuously logs token risk data over time to improve AI accuracy and detect ev
 ## 🗺️ Roadmap
 
 ### 🔹 Q3 2025 — Launch Core
-- ✅ **MVP Online**: Send, Swap, NFTs, Activity Log  
-- ✅ **ZipKey Access Layer**: Gated access via Discord key system  
-- ✅ **AI Risk Tags + Token Scans**: Real-time token analysis and scoring  
-- ⚠️ **Whale Signal Alerts** *(beta)*: Detection of large holder activity and potential manipulation patterns  
+✅ **MVP Online**: Send, Swap, NFTs, Activity Log  
+✅ **ZipKey Access Layer**: Gated access via Discord key system  
+✅ **AI Risk Tags + Token Scans**: Real-time token analysis and scoring  
+⚠️ **Whale Signal Alerts** *(beta)*: Detection of large holder activity and potential manipulation patterns  
 
 ### 🔸 Q4 2025 — Ecosystem Sync
-- 🔄 **Cross-Wallet Import & Merge**: Combine assets from multiple wallets  
-- 🌐 **Multi-Chain Expansion**: Ethereum & BSC integration  
-- 📊 **Deep Asset Stats**: Ownership mapping, flow tracking, behavioral analysis  
+🔄 **Cross-Wallet Import & Merge**: Combine assets from multiple wallets  
+🌐 **Multi-Chain Expansion**: Ethereum & BSC integration  
+📊 **Deep Asset Stats**: Ownership mapping, flow tracking, behavioral analysis  
 
 ### 🧠 Q1 2026 — Intelligence Scaling
-- 📈 **DEX Rate Forecasting (AI-powered)**: Predictive swap rate models  
-- 🧬 **Token Sentiment Sync Layer**: Emotional market indicators powered by AI  
-- 🗳️ **DAO Access & Voting Modules**: Community governance & feature proposals  
+📈 **DEX Rate Forecasting (AI-powered)**: Predictive swap rate models  
+🧬 **Token Sentiment Sync Layer**: Emotional market indicators powered by AI  
+🗳️ **DAO Access & Voting Modules**: Community governance & feature proposals  
 
 ---
 ## 🧬 Open Source Functions
