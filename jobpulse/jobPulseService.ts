@@ -1,68 +1,78 @@
 export interface JobPulse {
   jobId: string
   timestamp: number
-  status: "pending" | "running" | "completed" | "failed"
+  status: 'pending' | 'running' | 'completed' | 'failed'
 }
 
 export interface ListOptions {
   jobId?: string
-  status?: JobPulse["status"]
+  status?: JobPulse['status']
+  startTimestamp?: number
+  endTimestamp?: number
   limit?: number
-  sortDesc?: boolean
+  sortDesc?: boolean  // defaults to true
 }
 
 export class JobPulseService {
   private pulses: JobPulse[] = []
-  private maxEntries = 5000 // prevent unbounded growth
+  private readonly maxEntries: number
+
+  constructor(maxEntries = 5000) {
+    this.maxEntries = maxEntries
+  }
 
   /**
-   * Records a new pulse for a job
-   * @param jobId - Job identifier
-   * @param status - Status update
+   * Record a new pulse for a job.
+   * Oldest entries are dropped when exceeding maxEntries.
    */
-  record(jobId: string, status: JobPulse["status"]): void {
-    const pulse: JobPulse = {
-      jobId,
-      status,
-      timestamp: Date.now()
-    }
-
-    this.pulses.push(pulse)
-
+  record(jobId: string, status: JobPulse['status']): void {
+    this.pulses.push({ jobId, status, timestamp: Date.now() })
     if (this.pulses.length > this.maxEntries) {
-      this.pulses.shift() // remove oldest
+      // drop oldest entries in bulk if needed
+      this.pulses.splice(0, this.pulses.length - this.maxEntries)
     }
   }
 
   /**
-   * Lists job pulses with optional filters
-   * @param options - Filtering and sorting options
-   * @returns Filtered list of pulses
+   * List pulses with optional filtering, sorting, and pagination.
+   * Defaults to sorting descending by timestamp.
    */
   list(options: ListOptions = {}): JobPulse[] {
+    const {
+      jobId,
+      status,
+      startTimestamp,
+      endTimestamp,
+      limit,
+      sortDesc = true,
+    } = options
+
     let result = this.pulses
 
-    if (options.jobId) {
-      result = result.filter(p => p.jobId === options.jobId)
+    // filter by jobId or status or time window
+    if (jobId) {
+      result = result.filter(p => p.jobId === jobId)
+    }
+    if (status) {
+      result = result.filter(p => p.status === status)
+    }
+    if (startTimestamp !== undefined) {
+      result = result.filter(p => p.timestamp >= startTimestamp)
+    }
+    if (endTimestamp !== undefined) {
+      result = result.filter(p => p.timestamp <= endTimestamp)
     }
 
-    if (options.status) {
-      result = result.filter(p => p.status === options.status)
-    }
+    // sort, then apply limit
+    const sorted = sortDesc
+      ? [...result].sort((a, b) => b.timestamp - a.timestamp)
+      : [...result].sort((a, b) => a.timestamp - b.timestamp)
 
-    if (options.sortDesc) {
-      result = [...result].sort((a, b) => b.timestamp - a.timestamp)
-    }
-
-    if (options.limit && options.limit > 0) {
-      result = result.slice(0, options.limit)
-    }
-
-    return result
+    return limit && limit > 0 ? sorted.slice(0, limit) : sorted
   }
 
   /**
-   * Clears all pulses (use with caution)
+   * Remove all recorded pulses.
    */
   clear(): void {
     this.pulses = []
