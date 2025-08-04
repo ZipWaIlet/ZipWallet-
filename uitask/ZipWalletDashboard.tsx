@@ -5,43 +5,70 @@ import { WalletActivityGraph } from "./WalletActivityGraph"
 import { WhaleTransferList } from "./WhaleTransferList"
 import { AlertBanner } from "./AlertBanner"
 
-const AnalyzerDashboard: React.FC = () => {
-  const tokenData = {
-    name: "SOLANA",
-    riskLevel: "High",
-    volume: 1543200,
+export interface AnalyzerDashboardProps {
+  alertMessage: string
+  tokenData: {
+    name: string
+    riskLevel: "Low" | "Medium" | "High"
+    volume: number
   }
+  whaleTransfers: {
+    amount: number
+    token: string
+    address: string
+  }[]
+  walletActivity: {
+    time: string
+    value: number
+  }[]
+}
 
-  const whaleTransfers = [
-    { amount: 120000, token: "SOL", address: "FgkE9rW...7Pq2" },
-    { amount: 88000, token: "SOL", address: "9kq3reP...Mwb1" },
-  ]
-
-  const walletActivity = [
-    { time: "10:00", value: 400 },
-    { time: "11:00", value: 850 },
-    { time: "12:00", value: 300 },
-  ]
-
+export const AnalyzerDashboard: React.FC<AnalyzerDashboardProps> = ({
+  alertMessage,
+  tokenData,
+  whaleTransfers,
+  walletActivity,
+}) => {
   return (
-    <div className="analyzer-dashboard">
-      <AlertBanner message="Spike detected on SOL — 37.4% risk increase in last hour" />
+    <div className="p-6 space-y-6 bg-gray-900 min-h-screen">
+      <AlertBanner message={alertMessage} />
 
-      <section className="dashboard-section">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TokenInsightCard
           tokenName={tokenData.name}
           riskLevel={tokenData.riskLevel}
           volume={tokenData.volume}
         />
-        <RiskSignalBadge level={tokenData.riskLevel} />
+        <div className="flex items-center justify-center">
+          <RiskSignalBadge level={tokenData.riskLevel} />
+        </div>
       </section>
 
-      <section className="dashboard-section">
-        <WalletActivityGraph data={walletActivity} />
-        <WhaleTransferList transfers={whaleTransfers} />
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <h4 className="text-white font-semibold mb-2">Wallet Activity</h4>
+          <WalletActivityGraph data={walletActivity} />
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <h4 className="text-white font-semibold mb-2">Recent Whale Transfers</h4>
+          <WhaleTransferList transfers={whaleTransfers} />
+        </div>
       </section>
     </div>
   )
 }
 
-e
+// Usage example:
+// <AnalyzerDashboard
+//   alertMessage="Spike detected on SOL — 37.4% risk increase in last hour"
+//   tokenData={{ name: "SOLANA", riskLevel: "High", volume: 1_543_200 }}
+//   whaleTransfers={[
+//     { amount: 120_000, token: "SOL", address: "FgkE9rW...7Pq2" },
+//     { amount: 88_000, token: "SOL", address: "9kq3reP...Mwb1" },
+//   ]}
+//   walletActivity={[
+//     { time: "10:00", value: 400 },
+//     { time: "11:00", value: 850 },
+//     { time: "12:00", value: 300 },
+//   ]}
+// />
