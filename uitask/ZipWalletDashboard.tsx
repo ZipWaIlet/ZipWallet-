@@ -57,18 +57,3 @@ export const AnalyzerDashboard: React.FC<AnalyzerDashboardProps> = ({
     </div>
   )
 }
-
-// Usage example:
-// <AnalyzerDashboard
-//   alertMessage="Spike detected on SOL — 37.4% risk increase in last hour"
-//   tokenData={{ name: "SOLANA", riskLevel: "High", volume: 1_543_200 }}
-//   whaleTransfers={[
-//     { amount: 120_000, token: "SOL", address: "FgkE9rW...7Pq2" },
-//     { amount: 88_000, token: "SOL", address: "9kq3reP...Mwb1" },
-//   ]}
-//   walletActivity={[
-//     { time: "10:00", value: 400 },
-//     { time: "11:00", value: 850 },
-//     { time: "12:00", value: 300 },
-//   ]}
-// />
