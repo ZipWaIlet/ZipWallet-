@@ -26,11 +26,16 @@ export class JobPulseService {
    * Oldest entries are dropped when exceeding maxEntries.
    */
   record(jobId: string, status: JobPulse['status']): void {
-    this.pulses.push({ jobId, status, timestamp: Date.now() })
+    const newPulse: JobPulse = { jobId, status, timestamp: Date.now() }
+    this.pulses.push(newPulse)
+
     if (this.pulses.length > this.maxEntries) {
-      // drop oldest entries in bulk if needed
-      this.pulses.splice(0, this.pulses.length - this.maxEntries)
+      const excessEntries = this.pulses.length - this.maxEntries
+      // Drop oldest entries in bulk
+      this.pulses.splice(0, excessEntries)
     }
+
+    console.log(`Recorded pulse for jobId: ${jobId}, status: ${status}`)
   }
 
   /**
@@ -49,25 +54,18 @@ export class JobPulseService {
 
     let result = this.pulses
 
-    // filter by jobId or status or time window
-    if (jobId) {
-      result = result.filter(p => p.jobId === jobId)
-    }
-    if (status) {
-      result = result.filter(p => p.status === status)
-    }
-    if (startTimestamp !== undefined) {
-      result = result.filter(p => p.timestamp >= startTimestamp)
-    }
-    if (endTimestamp !== undefined) {
-      result = result.filter(p => p.timestamp <= endTimestamp)
-    }
+    // Efficient filtering
+    if (jobId) result = result.filter(p => p.jobId === jobId)
+    if (status) result = result.filter(p => p.status === status)
+    if (startTimestamp !== undefined) result = result.filter(p => p.timestamp >= startTimestamp)
+    if (endTimestamp !== undefined) result = result.filter(p => p.timestamp <= endTimestamp)
 
-    // sort, then apply limit
-    const sorted = sortDesc
-      ? [...result].sort((a, b) => b.timestamp - a.timestamp)
-      : [...result].sort((a, b) => a.timestamp - b.timestamp)
+    // Sort the results
+    const sorted = result.sort((a, b) => {
+      return sortDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
+    })
 
+    // Apply pagination limit
     return limit && limit > 0 ? sorted.slice(0, limit) : sorted
   }
 
@@ -75,6 +73,8 @@ export class JobPulseService {
    * Remove all recorded pulses.
    */
   clear(): void {
+    const count = this.pulses.length
     this.pulses = []
+    console.log(`Cleared ${count} pulses.`)
   }
 }
