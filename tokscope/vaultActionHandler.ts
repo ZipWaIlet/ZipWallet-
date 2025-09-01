@@ -3,23 +3,68 @@ import { PublicKey } from "@solana/web3.js"
 import { VaultCoreEngine } from "./vaultCoreEngine"
 import type { ExecutionContext } from "./types"
 
-// Action payload schemas
+/** Common helpers */
+const publicKeyString = z
+  .string()
+  .trim()
+  .refine((s) => {
+    try {
+      // Constructing will throw if invalid
+      // No randomness, deterministic validation
+      new PublicKey(s)
+      return true
+    } catch {
+      return false
+    }
+  }, "Invalid public key")
+
+const positiveAmount = z.number().positive().finite()
+
+/** Action payload schemas */
 const getWalletSchema = z.object({})
-const balanceSchema   = z.object({ mintAddress: z.string() })
-const allSchema       = z.object({})
-const transferSchema  = z.object({
-  recipient:   z.string().refine(val => PublicKey.isOnCurve(new PublicKey(val)), {
-    message: "Invalid recipient public key",
-  }),
-  amount:      z.number().positive(),
-  mintAddress: z.string().min(1),
+const balanceSchema = z.object({ mintAddress: publicKeyString })
+const allSchema = z.object({})
+const transferSchema = z.object({
+  recipient: publicKeyString,
+  amount: positiveAmount,
+  mintAddress: publicKeyString,
 })
 
-// Unified response envelope
+/** Action ids */
+export const VaultActionIds = {
+  GetWallet: "getWallet",
+  GetBalance: "getBalance",
+  GetAllBalances: "getAllBalances",
+  Transfer: "transfer",
+} as const
+export type VaultActionId = typeof VaultActionIds[keyof typeof VaultActionIds]
+
+/** Unified response envelope */
 type ActionResult<T> = {
   notice: string
   data?: T
   error?: string
+  meta?: {
+    actionId: VaultActionId | string
+    tookMs: number
+    ts: string
+  }
+}
+
+/** Type-level mapping for action results */
+type ActionDataMap = {
+  [VaultActionIds.GetWallet]: { walletAddress: string }
+  [VaultActionIds.GetBalance]: { balance: number }
+  [VaultActionIds.GetAllBalances]: { balances: Array<{ mint: string; balance: number }> }
+  [VaultActionIds.Transfer]: { txSignature: string }
+}
+
+function nowIso() {
+  return new Date().toISOString()
+}
+
+function normalizePubkey(input: PublicKey | string): PublicKey {
+  return input instanceof PublicKey ? input : new PublicKey(input)
 }
 
 export class VaultActionHandler {
@@ -31,50 +76,73 @@ export class VaultActionHandler {
 
   /**
    * Handle an action by its ID with validated payload
+   * Returns structured result with timing metadata
    */
-  public async handle(
-    actionId: string,
+  public async handle<K extends VaultActionId>(
+    actionId: K | string,
     payload: unknown,
     ctx: ExecutionContext
-  ): Promise<ActionResult<any>> {
+  ): Promise<ActionResult<ActionDataMap[VaultActionId]>> {
+    const started = Date.now()
     try {
       switch (actionId) {
-        case "getWallet": {
+        case VaultActionIds.GetWallet: {
           getWalletSchema.parse(payload)
-          const address = await this.engine.getWalletAddress(ctx.walletPubkey)
-          return { notice: "Wallet retrieved", data: { walletAddress: address } }
+          const owner = normalizePubkey(ctx.walletPubkey)
+          const address = await this.engine.getWalletAddress(owner)
+          return this.ok(actionId, started, { walletAddress: address })
         }
 
-        case "getBalance": {
+        case VaultActionIds.GetBalance: {
           const { mintAddress } = balanceSchema.parse(payload)
-          const balance = await this.engine.getBalance(ctx.walletPubkey, mintAddress)
-          return { notice: "Balance fetched", data: { balance } }
+          const owner = normalizePubkey(ctx.walletPubkey)
+          const balance = await this.engine.getBalance(owner, mintAddress)
+          return this.ok(actionId, started, { balance })
         }
 
-        case "getAllBalances": {
+        case VaultActionIds.GetAllBalances: {
           allSchema.parse(payload)
-          const balances = await this.engine.getAllBalances(ctx.walletPubkey)
-          return { notice: "All balances fetched", data: { balances } }
+          const owner = normalizePubkey(ctx.walletPubkey)
+          const balances = await this.engine.getAllBalances(owner)
+          return this.ok(actionId, started, { balances })
         }
 
-        case "transfer": {
+        case VaultActionIds.Transfer: {
           const { recipient, amount, mintAddress } = transferSchema.parse(payload)
+          const owner = normalizePubkey(ctx.walletPubkey)
           const recipientPubkey = new PublicKey(recipient)
-          const txSignature = await this.engine.transfer(
-            ctx.walletPubkey,
-            recipientPubkey,
-            mintAddress,
-            amount
-          )
-          return { notice: "Transfer executed", data: { txSignature } }
+          const txSignature = await this.engine.transfer(owner, recipientPubkey, mintAddress, amount)
+          return this.ok(actionId, started, { txSignature })
         }
 
         default:
-          return { notice: "Unknown action", error: `Unsupported action: ${actionId}` }
+          return this.fail(actionId, started, `Unsupported action: ${actionId}`)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      return { notice: "Action failed", error: message }
+      return this.fail(actionId, started, message)
+    }
+  }
+
+  private ok<T>(actionId: VaultActionId | string, started: number, data: T): ActionResult<T> {
+    const tookMs = Date.now() - started
+    return {
+      notice: "OK",
+      data,
+      meta: { actionId, tookMs, ts: nowIso() },
+    }
+  }
+
+  private fail<T>(
+    actionId: VaultActionId | string,
+    started: number,
+    error: string
+  ): ActionResult<T> {
+    const tookMs = Date.now() - started
+    return {
+      notice: "Action failed",
+      error,
+      meta: { actionId, tookMs, ts: nowIso() },
     }
   }
 }
