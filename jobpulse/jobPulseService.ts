@@ -10,7 +10,7 @@ export interface ListOptions {
   startTimestamp?: number
   endTimestamp?: number
   limit?: number
-  sortDesc?: boolean  // defaults to true
+  sortDesc?: boolean
 }
 
 export class JobPulseService {
@@ -21,27 +21,18 @@ export class JobPulseService {
     this.maxEntries = maxEntries
   }
 
-  /**
-   * Record a new pulse for a job.
-   * Oldest entries are dropped when exceeding maxEntries.
-   */
   record(jobId: string, status: JobPulse['status']): void {
     const newPulse: JobPulse = { jobId, status, timestamp: Date.now() }
     this.pulses.push(newPulse)
 
     if (this.pulses.length > this.maxEntries) {
-      const excessEntries = this.pulses.length - this.maxEntries
-      // Drop oldest entries in bulk
-      this.pulses.splice(0, excessEntries)
+      const excess = this.pulses.length - this.maxEntries
+      this.pulses.splice(0, excess)
     }
 
-    console.log(`Recorded pulse for jobId: ${jobId}, status: ${status}`)
+    console.info("JobPulseService.record", { jobId, status })
   }
 
-  /**
-   * List pulses with optional filtering, sorting, and pagination.
-   * Defaults to sorting descending by timestamp.
-   */
   list(options: ListOptions = {}): JobPulse[] {
     const {
       jobId,
@@ -54,27 +45,26 @@ export class JobPulseService {
 
     let result = this.pulses
 
-    // Efficient filtering
     if (jobId) result = result.filter(p => p.jobId === jobId)
     if (status) result = result.filter(p => p.status === status)
     if (startTimestamp !== undefined) result = result.filter(p => p.timestamp >= startTimestamp)
     if (endTimestamp !== undefined) result = result.filter(p => p.timestamp <= endTimestamp)
 
-    // Sort the results
-    const sorted = result.sort((a, b) => {
-      return sortDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
-    })
+    const sorted = result
+      .slice() // avoid mutating original
+      .sort((a, b) => sortDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp)
 
-    // Apply pagination limit
     return limit && limit > 0 ? sorted.slice(0, limit) : sorted
   }
 
-  /**
-   * Remove all recorded pulses.
-   */
+  latest(jobId: string): JobPulse | null {
+    const found = this.list({ jobId, limit: 1, sortDesc: true })
+    return found.length > 0 ? found[0] : null
+  }
+
   clear(): void {
     const count = this.pulses.length
     this.pulses = []
-    console.log(`Cleared ${count} pulses.`)
+    console.info("JobPulseService.clear", { count })
   }
 }
